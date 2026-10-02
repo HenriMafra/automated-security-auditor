@@ -1,0 +1,34 @@
+# Aegis scope / rules of engagement
+# ---------------------------------------------------------------------------
+# Copy to config/scope.yaml and fill in for your engagement.
+# The SHA-256 of this file's canonical form goes into authorization.yaml as
+# `scope_hash`. Compute it with:  aegis verify --auth ... --scope ...
+# (verify prints the mismatch and the actual hash if they differ).
+
+# Hosts / domains / CIDRs that ARE authorized. Supports:
+#   - exact host:      app.example.com
+#   - wildcard:        *.example.com
+#   - IP or CIDR:      203.0.113.10  /  203.0.113.0/24
+in_scope:
+  - example.com
+  - "*.example.com"
+  - 203.0.113.0/24
+
+# Explicitly EXCLUDED (wins over in_scope). Put shared infra, third parties,
+# and anything the client did not authorize here.
+out_of_scope:
+  - status.example.com
+  - "*.thirdparty-cdn.com"
+
+# TCP ports to probe. Empty list = Aegis default top-ports set.
+allowed_ports: []
+
+# Max requests per second across the whole run (politeness / RoE cap).
+max_rps: 5
+
+# Allow modules that send traffic to the target (recon/scan). Almost always true.
+allow_active: true
+
+# Allow intrusive modules (e.g. nuclei template scanning). Requires an explicit
+# client sign-off AND the --enable-intrusive run flag. Default false.
+allow_intrusive: false

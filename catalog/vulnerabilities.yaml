@@ -1,0 +1,459 @@
+# Aegis Vulnerability Catalog
+# ---------------------------------------------------------------------------
+# The consultable "pipeline" of what an authorized external assessment looks
+# for. Organized by OWASP Top 10 (2021) + network/transport/email/API classes.
+#
+# Each check has:
+#   id          - stable Aegis identifier (findings reference this)
+#   title       - short name
+#   severity    - typical severity (info|low|medium|high|critical)
+#   automated   - true if an Aegis module tests it automatically today
+#   module      - which module covers it (or "manual")
+#   techniques  - how it is tested (black-box, no source access)
+#   detection   - what indicates the issue
+#   remediation - the fix
+#   references  - authoritative links
+#
+# NOTE: "automated: false" checks are part of the *methodology* — performed by
+# a licensed operator, non-destructively, under the signed scope. Aegis records
+# them so nothing is forgotten, even when no safe automated probe exists.
+version: 1
+
+categories:
+  - name: Reconnaissance & OSINT
+    owasp: "PTES-Intel"
+    checks:
+      - id: AEG-RECON-001
+        title: DNS record enumeration
+        severity: info
+        automated: true
+        module: recon
+        techniques: [dns-query, record-enumeration]
+        detection: Enumerate A/AAAA/MX/NS/TXT/CNAME/SOA; identify hosting/mail providers.
+        remediation: Remove stale/over-sharing records; avoid internal hostnames in public DNS.
+        references: ["https://owasp.org/www-project-web-security-testing-guide/"]
+      - id: AEG-RECON-002
+        title: Subdomain discovery
+        severity: low
+        automated: false
+        module: manual
+        techniques: [ct-logs, passive-dns, brute-force-wordlist]
+        detection: Forgotten/staging subdomains widen the attack surface.
+        remediation: Inventory subdomains; decommission unused; monitor CT logs.
+        references: ["https://crt.sh"]
+      - id: AEG-RECON-003
+        title: Exposed metadata & credentials in public sources
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [github-dorking, paste-sites, google-dorking]
+        detection: Leaked API keys, .env files, internal docs indexed publicly.
+        remediation: Rotate leaked secrets; add secret-scanning to CI; takedown requests.
+        references: ["https://owasp.org/www-community/"]
+
+  - name: Attack surface & network
+    owasp: "NIST-800-115"
+    checks:
+      - id: AEG-NET-001
+        title: Open port / service inventory
+        severity: info
+        automated: true
+        module: portscan
+        techniques: [tcp-connect-scan, nmap-service-detection]
+        detection: Enumerate reachable TCP services and versions.
+        remediation: Expose only required services; place the rest behind VPN/firewall.
+        references: ["https://nmap.org/book/"]
+      - id: AEG-NET-002
+        title: Sensitive service exposed to the internet
+        severity: high
+        automated: true
+        module: portscan
+        techniques: [port-classification]
+        detection: Databases, RDP, VNC, Docker API, Telnet reachable publicly.
+        remediation: Firewall/allow-list; strong auth; never expose admin/data services.
+        references: ["https://owasp.org/www-project-top-ten/"]
+      - id: AEG-NET-003
+        title: Default / weak service credentials
+        severity: high
+        automated: false
+        module: manual
+        techniques: [known-default-credential-check]
+        detection: Services accept vendor default credentials.
+        remediation: Enforce credential rotation on deployment; disable defaults.
+        references: ["https://owasp.org/www-community/vulnerabilities/"]
+
+  - name: Transport security (TLS/SSL)
+    owasp: "A02:2021-Cryptographic-Failures"
+    checks:
+      - id: AEG-TLS-001
+        title: Certificate expiry / validity
+        severity: medium
+        automated: true
+        module: tls_check
+        techniques: [tls-handshake, cert-parse]
+        detection: Expired, soon-to-expire, or hostname-mismatched certificates.
+        remediation: Automate renewal (ACME); monitor expiry; fix SAN/hostname.
+        references: ["https://datatracker.ietf.org/doc/html/rfc5280"]
+      - id: AEG-TLS-002
+        title: Deprecated TLS protocol versions
+        severity: medium
+        automated: true
+        module: tls_check
+        techniques: [protocol-negotiation]
+        detection: Server negotiates SSLv3/TLS1.0/TLS1.1.
+        remediation: Disable <TLS1.2; prefer TLS1.3; strong cipher suites only.
+        references: ["https://datatracker.ietf.org/doc/html/rfc8996"]
+      - id: AEG-TLS-003
+        title: Weak cipher suites / no forward secrecy
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [cipher-enumeration]
+        detection: RC4/3DES/export ciphers or non-PFS key exchange offered.
+        remediation: Restrict to AEAD + ECDHE suites.
+        references: ["https://ciphersuite.info/"]
+
+  - name: A01 — Broken Access Control
+    owasp: "A01:2021"
+    checks:
+      - id: AEG-AC-001
+        title: Insecure Direct Object Reference (IDOR)
+        severity: high
+        automated: false
+        module: manual
+        techniques: [id-tampering, horizontal-vertical-privilege-test]
+        detection: Changing an object id returns another user's data.
+        remediation: Enforce per-object authorization server-side.
+        references: ["https://owasp.org/Top10/A01_2021-Broken_Access_Control/"]
+      - id: AEG-AC-002
+        title: Forced browsing to privileged endpoints
+        severity: high
+        automated: false
+        module: manual
+        techniques: [directory-enumeration, path-guessing]
+        detection: Admin/privileged paths reachable without authorization.
+        remediation: Deny-by-default authorization on every route.
+        references: ["https://owasp.org/Top10/A01_2021-Broken_Access_Control/"]
+      - id: AEG-AC-003
+        title: Missing function-level access control
+        severity: high
+        automated: false
+        module: manual
+        techniques: [method-tampering, role-swap]
+        detection: Non-privileged role can invoke privileged actions/APIs.
+        remediation: Check authorization on the server for every function.
+        references: ["https://owasp.org/Top10/A01_2021-Broken_Access_Control/"]
+
+  - name: A02 — Cryptographic Failures
+    owasp: "A02:2021"
+    checks:
+      - id: AEG-CR-001
+        title: Sensitive data transmitted without TLS
+        severity: high
+        automated: false
+        module: manual
+        techniques: [traffic-inspection, mixed-content-check]
+        detection: Credentials/PII sent over HTTP or mixed content.
+        remediation: Enforce HTTPS everywhere + HSTS.
+        references: ["https://owasp.org/Top10/A02_2021-Cryptographic_Failures/"]
+      - id: AEG-CR-002
+        title: Weak password storage indicators
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [password-reset-analysis, error-message-analysis]
+        detection: Signs of reversible/unsalted password storage.
+        remediation: Use bcrypt/scrypt/argon2 with per-user salt.
+        references: ["https://owasp.org/www-project-cheat-sheets/"]
+
+  - name: A03 — Injection
+    owasp: "A03:2021"
+    checks:
+      - id: AEG-INJ-001
+        title: SQL injection
+        severity: critical
+        automated: false
+        module: manual
+        techniques: [error-based, boolean-blind, time-blind, union-based]
+        detection: Input alters SQL semantics (errors, boolean/timing differences).
+        remediation: Parameterized queries / prepared statements; input validation.
+        references: ["https://owasp.org/Top10/A03_2021-Injection/"]
+      - id: AEG-INJ-002
+        title: Cross-Site Scripting (reflected/stored/DOM)
+        severity: high
+        automated: false
+        module: manual
+        techniques: [payload-reflection, context-breaking, dom-sink-analysis]
+        detection: Injected markup/script executes in the victim's browser.
+        remediation: Context-aware output encoding; CSP; sanitize rich input.
+        references: ["https://owasp.org/www-community/attacks/xss/"]
+      - id: AEG-INJ-003
+        title: Command injection
+        severity: critical
+        automated: false
+        module: manual
+        techniques: [os-command-blind, timing-oracle]
+        detection: Input reaches an OS shell.
+        remediation: Avoid shells; use safe APIs; strict allow-list validation.
+        references: ["https://owasp.org/www-community/attacks/Command_Injection"]
+      - id: AEG-INJ-004
+        title: Server-Side Template Injection (SSTI)
+        severity: high
+        automated: false
+        module: manual
+        techniques: [template-expression-probing]
+        detection: Template expressions are evaluated server-side.
+        remediation: Don't pass user input into templates; sandbox engines.
+        references: ["https://portswigger.net/research/server-side-template-injection"]
+      - id: AEG-INJ-005
+        title: NoSQL / LDAP / XPath injection
+        severity: high
+        automated: false
+        module: manual
+        techniques: [operator-injection, filter-manipulation]
+        detection: Query operators injected into NoSQL/LDAP/XPath queries.
+        remediation: Parameterize; validate types; escape special operators.
+        references: ["https://owasp.org/Top10/A03_2021-Injection/"]
+
+  - name: A04 — Insecure Design
+    owasp: "A04:2021"
+    checks:
+      - id: AEG-DES-001
+        title: Missing rate limiting / anti-automation
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [request-flood-observation-lite]
+        detection: Sensitive actions lack throttling/CAPTCHA (credential stuffing risk).
+        remediation: Rate-limit, lockout, CAPTCHA, and monitor abuse.
+        references: ["https://owasp.org/Top10/A04_2021-Insecure_Design/"]
+      - id: AEG-DES-002
+        title: Business-logic bypass
+        severity: high
+        automated: false
+        module: manual
+        techniques: [workflow-state-tampering, negative-testing]
+        detection: Steps can be skipped/replayed to gain value (e.g. price tampering).
+        remediation: Enforce invariants server-side; validate state transitions.
+        references: ["https://owasp.org/www-project-web-security-testing-guide/"]
+
+  - name: A05 — Security Misconfiguration
+    owasp: "A05:2021"
+    checks:
+      - id: AEG-HDR-001
+        title: Missing HTTP security headers
+        severity: medium
+        automated: true
+        module: web_headers
+        techniques: [response-header-analysis]
+        detection: Missing HSTS/CSP/X-Content-Type-Options/X-Frame-Options.
+        remediation: Add the full secure-headers set.
+        references: ["https://owasp.org/www-project-secure-headers/"]
+      - id: AEG-HDR-002
+        title: Insecure cookie flags
+        severity: low
+        automated: true
+        module: web_headers
+        techniques: [set-cookie-analysis]
+        detection: Session cookies missing Secure/HttpOnly/SameSite.
+        remediation: Set Secure, HttpOnly, SameSite on session cookies.
+        references: ["https://owasp.org/www-community/controls/SecureCookieAttribute"]
+      - id: AEG-INFO-002
+        title: Reachable sensitive files/paths
+        severity: high
+        automated: true
+        module: web_headers
+        techniques: [known-path-probing]
+        detection: /.git, /.env, /server-status, /actuator exposed.
+        remediation: Block/deny these paths; keep VCS and config out of webroot.
+        references: ["https://owasp.org/www-project-web-security-testing-guide/"]
+      - id: AEG-CFG-001
+        title: Directory listing enabled
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [autoindex-detection]
+        detection: Server returns directory indexes.
+        remediation: Disable autoindex; serve explicit files only.
+        references: ["https://owasp.org/www-project-web-security-testing-guide/"]
+      - id: AEG-CFG-002
+        title: Verbose error messages / stack traces
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [error-triggering, debug-endpoint-check]
+        detection: Stack traces / debug pages reveal internals.
+        remediation: Generic error pages; disable debug in production.
+        references: ["https://owasp.org/Top10/A05_2021-Security_Misconfiguration/"]
+      - id: AEG-CFG-003
+        title: CORS misconfiguration
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [origin-reflection-test]
+        detection: Wildcard or reflected Origin with credentials allowed.
+        remediation: Strict origin allow-list; never reflect Origin with credentials.
+        references: ["https://portswigger.net/web-security/cors"]
+
+  - name: A06 — Vulnerable & Outdated Components
+    owasp: "A06:2021"
+    checks:
+      - id: AEG-FP-001
+        title: Technology / version fingerprinting
+        severity: info
+        automated: true
+        module: fingerprint
+        techniques: [header-signature, body-signature]
+        detection: Identify server/framework/CMS and versions.
+        remediation: Keep components patched; hide version banners.
+        references: ["https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/"]
+      - id: AEG-INFO-001
+        title: Version disclosure in headers
+        severity: low
+        automated: true
+        module: fingerprint
+        techniques: [header-analysis]
+        detection: Server/X-Powered-By reveal exact versions.
+        remediation: Suppress/genericize version headers.
+        references: ["https://owasp.org/www-project-secure-headers/"]
+      - id: AEG-NUCLEI
+        title: Known-CVE / template detection (nuclei)
+        severity: high
+        automated: true
+        module: nuclei
+        techniques: [template-matching, cve-signatures]
+        detection: Community templates match known-vulnerable components.
+        remediation: Patch/upgrade the affected component.
+        references: ["https://github.com/projectdiscovery/nuclei-templates"]
+
+  - name: A07 — Identification & Authentication Failures
+    owasp: "A07:2021"
+    checks:
+      - id: AEG-AUTH-001
+        title: Weak password policy / credential stuffing exposure
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [policy-probing, breach-corpus-check]
+        detection: Weak passwords accepted; no breach-password screening.
+        remediation: Enforce length/complexity; screen against breach lists; MFA.
+        references: ["https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/"]
+      - id: AEG-AUTH-002
+        title: Username enumeration
+        severity: low
+        automated: false
+        module: manual
+        techniques: [response-differential, timing-differential]
+        detection: Login/reset responses reveal whether an account exists.
+        remediation: Uniform responses and timing for valid/invalid accounts.
+        references: ["https://owasp.org/www-project-web-security-testing-guide/"]
+      - id: AEG-AUTH-003
+        title: Session management weaknesses
+        severity: high
+        automated: false
+        module: manual
+        techniques: [token-entropy, fixation, logout-invalidce]
+        detection: Predictable tokens, no rotation on login, no server-side logout.
+        remediation: High-entropy tokens; rotate on auth; invalidate on logout.
+        references: ["https://owasp.org/www-project-cheat-sheets/"]
+
+  - name: A08 — Software & Data Integrity Failures
+    owasp: "A08:2021"
+    checks:
+      - id: AEG-INT-001
+        title: Missing Subresource Integrity (SRI)
+        severity: low
+        automated: false
+        module: manual
+        techniques: [script-tag-analysis]
+        detection: Third-party scripts loaded without integrity hashes.
+        remediation: Add SRI hashes; pin trusted CDNs.
+        references: ["https://developer.mozilla.org/docs/Web/Security/Subresource_Integrity"]
+      - id: AEG-INT-002
+        title: Insecure deserialization
+        severity: high
+        automated: false
+        module: manual
+        techniques: [serialized-object-tampering]
+        detection: App deserializes untrusted data unsafely.
+        remediation: Avoid native deserialization of untrusted input; use signed formats.
+        references: ["https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/"]
+
+  - name: A09 — Security Logging & Monitoring Failures
+    owasp: "A09:2021"
+    checks:
+      - id: AEG-LOG-001
+        title: Insufficient logging/monitoring (observational)
+        severity: low
+        automated: false
+        module: manual
+        techniques: [detection-response-observation]
+        detection: Repeated failed/abusive requests trigger no visible response.
+        remediation: Centralized logging, alerting, and incident response for auth/abuse.
+        references: ["https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/"]
+
+  - name: A10 — Server-Side Request Forgery (SSRF)
+    owasp: "A10:2021"
+    checks:
+      - id: AEG-SSRF-001
+        title: Server-Side Request Forgery
+        severity: high
+        automated: false
+        module: manual
+        techniques: [url-parameter-fuzzing, oob-interaction]
+        detection: Server fetches attacker-supplied URLs (cloud metadata, internal hosts).
+        remediation: Allow-list egress; block link-local/metadata; validate URLs.
+        references: ["https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery/"]
+
+  - name: API security (OWASP API Top 10)
+    owasp: "API:2023"
+    checks:
+      - id: AEG-API-001
+        title: Broken Object Level Authorization (BOLA)
+        severity: high
+        automated: false
+        module: manual
+        techniques: [object-id-tampering]
+        detection: API returns objects belonging to other users/tenants.
+        remediation: Enforce object-level authorization on every API call.
+        references: ["https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/"]
+      - id: AEG-API-002
+        title: Excessive data exposure
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [response-field-analysis]
+        detection: API returns more fields than the client needs (PII/secrets).
+        remediation: Return minimal fields; filter server-side, not client-side.
+        references: ["https://owasp.org/API-Security/"]
+      - id: AEG-API-003
+        title: Lack of resources & rate limiting
+        severity: medium
+        automated: false
+        module: manual
+        techniques: [pagination-abuse, throttle-check]
+        detection: API endpoints accept unbounded/expensive queries.
+        remediation: Enforce pagination, quotas, and per-key rate limits.
+        references: ["https://owasp.org/API-Security/"]
+
+  - name: Email security
+    owasp: "Anti-Spoofing"
+    checks:
+      - id: AEG-EMAIL-001
+        title: Missing/weak SPF
+        severity: low
+        automated: true
+        module: recon
+        techniques: [txt-record-analysis]
+        detection: No SPF record, or overly permissive (+all).
+        remediation: Publish a strict SPF record.
+        references: ["https://datatracker.ietf.org/doc/html/rfc7208"]
+      - id: AEG-EMAIL-002
+        title: Missing DMARC/DKIM
+        severity: low
+        automated: false
+        module: manual
+        techniques: [dns-policy-analysis]
+        detection: No DMARC policy or DKIM signing → spoofable domain.
+        remediation: Publish DMARC (p=reject) and enable DKIM signing.
+        references: ["https://datatracker.ietf.org/doc/html/rfc7489"]

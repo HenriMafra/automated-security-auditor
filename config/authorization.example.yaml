@@ -1,0 +1,26 @@
+# Aegis authorization document
+# ---------------------------------------------------------------------------
+# Copy to config/authorization.yaml. This represents the client's WRITTEN
+# permission to test. Aegis refuses to run if this is missing, expired, or if
+# scope_hash does not match scope.yaml.
+
+# Who authorized the engagement
+client: "Example Corp"
+authorized_by: "Jane Doe, CISO — Example Corp"
+contact: "security@example.com"
+engagement_id: "ENG-2026-001"
+
+# Testing window (ISO 8601, UTC assumed if no offset). Aegis will not run
+# before valid_from or after valid_until.
+valid_from: "2026-08-01T00:00:00Z"
+valid_until: "2026-08-31T23:59:59Z"
+
+# SHA-256 of the canonical scope.yaml. Run `aegis verify` — if this is wrong it
+# prints the correct value. Binding the hash here makes scope tamper-evident:
+# editing scope.yaml after signing invalidates the authorization.
+scope_hash: "REPLACE_WITH_OUTPUT_OF_aegis_verify"
+
+# Optional HMAC-SHA256 signature over (scope_hash|valid_from|valid_until) using
+# a shared secret, for stronger integrity. Enforced only when you pass
+# --signing-key to verify/run. Leave empty to skip.
+signature: ""

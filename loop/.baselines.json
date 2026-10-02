@@ -1,0 +1,8 @@
+{
+  "pinned_at": "2026-08-02T19:45:32.085758+00:00",
+  "guarded": {
+    "aegis/authorization.py": "d2888c4b3353f62a40f7cedd1432c0908007bc68f4beeca71ae0c3085ba9ff8c",
+    "loop/PROTOCOL.md": "0630c5d3dfdd47666400e0949bb030848aa2fab92482d62815121d1bf6b01058",
+    "tests/test_authorization.py": "beea7e5e69f54459ed7f98e7831e929824235f02b3e1b98f2e8e0d7e965c3a25"
+  }
+}

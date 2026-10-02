@@ -1,0 +1,19 @@
+{
+  "protocol_version": "1",
+  "mode": "autonomous",
+  "iteration": 0,
+  "max_iterations": 1000,
+  "checkpoint_interval": 100,
+  "status": "READY_TO_RUN",
+  "stop_reason": null,
+  "last_task_id": null,
+  "blocked_streak": 0,
+  "auto_denied_count": 0,
+  "refused_count": 0,
+  "health": {
+    "last_checkpoint": 0,
+    "verdict": "UNKNOWN",
+    "checked_at": null
+  },
+  "last_updated": "2026-08-02"
+}
