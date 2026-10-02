@@ -1,73 +1,70 @@
-# 🛡️ Automated Security Auditor — Framework de Reconhecimento e Auditoria de Superfície de Ataque
+# Automated Security Auditor: External Attack Surface Reconnaissance and OWASP Compliance Assessment
 
-Framework modular em Python para **auditoria automatizada de postura de segurança externa e testes de intrusão autorizados**, avaliando parâmetros de rede, cabeçalhos de segurança web (OWASP), integridade de certificados SSL/TLS e configurações de DNS contra superfícies de ataque públicas.
-
-Gera relatórios executivos em Markdown e JSON estruturado com classificação de risco conforme o padrão **CVSS v3.1**.
-
----
-
-## ⚠️ Aviso Legal / Authorized Use Only
-
-> **IMPORTANTE:** Esta ferramenta foi desenvolvida exclusivamente para auditorias em infraestruturas e domínios **próprios ou expressamente autorizados por escrito**. Qualquer uso não autorizado contra alvos de terceiros é estritamente proibido e ilegal. O autor não se responsabiliza pelo uso indevido deste software.
+**Author:** Henri Mafra  
+**License:** MIT License  
+**Domain:** Information Security, Attack Surface Management, Vulnerability Assessment  
 
 ---
 
-## 📌 Que Problema Resolve?
+## 1. Overview
 
-Muitas organizações expõem involuntariamente aplicações com:
-- Falta de cabeçalhos de proteção essenciais (ex: `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`), facilitando ataques de Clickjacking e XSS.
-- Certificados SSL/TLS com cifras fracas (TLS 1.0/1.1 ativas) ou próximos da expiração.
-- Vazamento de versões de servidores web (`Server`, `X-Powered-By`) que auxiliam invasores na identificação de exploits conhecidos.
-- Registros de DNS mal configurados que permitem sequestro de subdomínios (Subdomain Takeover).
-
-O **Automated Security Auditor** automatiza essa verificação em segundos, fornecendo um diagnóstico acionável antes que agentes maliciosos explorem as brechas.
+Automated Security Auditor is a modular Python framework engineered for automated external security posture evaluation, network surface mapping, and compliance auditing against authorized internet-facing endpoints. The tool audits HTTP security headers against **OWASP recommendations**, inspects **X.509 SSL/TLS certificate chains**, and validates DNS zone records to mitigate email spoofing and domain takeover risks.
 
 ---
 
-## ⚙️ Módulos de Auditoria
+## 2. Legal Notice and Authorized Testing Policy
 
-1. **Módulo de Cabeçalhos HTTP / OWASP:**
-   - Validação de `HSTS` com diretiva `includeSubDomains`.
-   - Inspeção de `CSP` (Content Security Policy) para detecção de diretivas permissivas (`unsafe-inline`, `*`).
-   - Verificação de políticas de cookies (`SameSite`, `Secure`, `HttpOnly`).
-2. **Módulo SSL / TLS:**
-   - Negociação de cifras e protocolos suportados.
-   - Cálculo de dias restantes até expiração do certificado X.509.
-   - Validação da cadeia de autoridade certificadora (CA Chain).
-3. **Módulo DNS & Superfície:**
-   - Resolução de registros MX, TXT (SPF, DKIM, DMARC para prevenção de spoofing de e-mail).
-   - Detecção de registros CNAME órfãos apontando para serviços em nuvem desativados.
+**RESTRICTED USE AUTHORIZATION:** This software is designed exclusively for testing systems that are explicitly owned by the operator or for which unambiguous, written authorization has been granted. Unauthorized target assessment violates applicable national and international cybercrime statutes. The author disclaims all liability for unauthorized deployment.
 
 ---
 
-## 🏗️ Stack Tecnológica
+## 3. Auditing Methodology and Subsystems
 
-- **Linguagem:** Python 3.10+
-- **Bibliotecas:** `dnspython`, `cryptography`, `urllib3`, `rich` (CLI formatada e colorida).
-- **Saída:** Relatórios executivos padronizados em Markdown e JSON.
+### 3.1. OWASP Security Header Inspection
+Evaluates mandatory defense-in-depth headers:
+- `Strict-Transport-Security` (HSTS): Minimum max-age verification ($T \ge 31536000$) and `includeSubDomains` enforcement.
+- `Content-Security-Policy` (CSP): Detection of unsafe directives (`'unsafe-inline'`, `'unsafe-eval'`, wildcard origins `*`).
+- `X-Frame-Options`: Anti-clickjacking verification (`DENY` or `SAMEORIGIN`).
+- `X-Content-Type-Options`: Prevention of MIME-type sniffing (`nosniff`).
+
+### 3.2. Cryptographic SSL/TLS Assessment
+- Validates certificate expiration deadlines with proactive 30-day alerts.
+- Inspects supported protocol versions, flagging obsolete protocols (SSL 3.0, TLS 1.0, TLS 1.1).
+- Validates root and intermediate Certificate Authority (CA) signature chains.
+
+### 3.3. DNS Hygiene and Spoofing Prevention
+- Resolves and verifies SPF (`v=spf1`) syntax and strict terminal mechanisms (`-all` vs. `~all`).
+- Confirms presence of DMARC (`_dmarc.domain`) policies with enforcement modes (`reject`, `quarantine`).
 
 ---
 
-## 🚀 Como Executar Localmente
+## 4. Setup and Execution
 
 ```bash
-# 1. Clone o repositório
+# 1. Clone repository
 git clone https://github.com/HenriMafra/automated-security-auditor.git
 cd automated-security-auditor
 
-# 2. Crie e ative o ambiente virtual
+# 2. Setup virtual environment
 python -m venv venv
-source venv/bin/activate  # No Windows: .\venv\Scripts\activate
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
 
-# 3. Instale as dependências
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Execute a auditoria em um domínio autorizado
-python -m aegis.cli scan --target example.com --output relatorio.md
+# 4. Execute audit on authorized target
+python -m aegis.cli scan --target example.com --output report.json
 ```
 
 ---
 
-## 📄 Licença
+## 5. References
 
-Distribuído sob a licença **MIT**. Desenvolvido por **Henri Mafra**.
+- Open Web Application Security Project (OWASP). (2023). *OWASP Secure Headers Project*.
+- Rescorla, E. (2018). *The Transport Layer Security (TLS) Protocol Version 1.3*. RFC 8446.
+
+---
+
+## 6. License
+
+Licensed under the MIT License. Copyright (c) Henri Mafra.
